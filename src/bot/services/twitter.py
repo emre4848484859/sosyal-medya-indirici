@@ -92,7 +92,7 @@ class TwitterDownloader:
 
         caption = self._extract_caption(tweet, payload)
         photos = self._extract_photos(tweet, payload)
-        video_url = self._extract_video(tweet)
+        video_url = self._extract_video(tweet, payload)
 
         if not photos and not video_url:
             msg = "Paylaşımda indirilebilir medya bulunamadı."
@@ -131,15 +131,18 @@ class TwitterDownloader:
 
         return photos
 
-    def _extract_video(self, tweet: dict[str, Any]) -> str | None:
+    def _extract_video(self, tweet: dict[str, Any], payload: dict[str, Any] | None = None) -> str | None:
         best_url: str | None = None
         best_score = -1
+        payload = payload or {}
 
         def consider(url: str | None, bitrate: int | float | None = None) -> None:
             nonlocal best_url, best_score
             if not url:
                 return
             normalized = self._normalize_url(url)
+            if not self._is_video_url(normalized):
+                return
             score = int(bitrate or 0)
             if score > best_score:
                 best_url = normalized
@@ -157,11 +160,55 @@ class TwitterDownloader:
                 if isinstance(variant, dict):
                     consider(variant.get("url"), variant.get("bitrate"))
 
-        for media in tweet.get("media") or []:
-            if isinstance(media, dict) and (media.get("type") or "").lower() in {"video", "animated_gif"}:
-                consider(media.get("url") or media.get("video_url"), media.get("bitrate"))
+        media_collections: list[list[dict[str, Any]]] = []
+
+        def collect_media(value: Any) -> None:
+            if isinstance(value, list):
+                media_collections.append([entry for entry in value if isinstance(entry, dict)])
+
+        collect_media(tweet.get("media"))
+        collect_media(tweet.get("media_extended"))
+        collect_media(payload.get("media_extended"))
+
+        extended_entities = tweet.get("extended_entities")
+        if isinstance(extended_entities, dict):
+            collect_media(extended_entities.get("media"))
+
+        for collection in media_collections:
+            for media in collection:
+                media_type = (media.get("type") or "").lower()
+                if media_type not in {"video", "animated_gif"}:
+                    continue
+                consider(media.get("url") or media.get("video_url"), media.get("bitrate") or media.get("bit_rate"))
+                for variant in media.get("variants") or []:
+                    if isinstance(variant, dict):
+                        consider(variant.get("url"), variant.get("bitrate") or variant.get("bit_rate"))
+
+        def consider_url_sequence(urls: Any) -> None:
+            if isinstance(urls, str):
+                consider(urls, None)
+            elif isinstance(urls, list):
+                for url in urls:
+                    if isinstance(url, str):
+                        consider(url, None)
+
+        consider_url_sequence(tweet.get("mediaURLs"))
+        consider_url_sequence(payload.get("mediaURLs"))
+
+        for key in ("combinedMediaUrl", "combinedMediaURL", "combined_media_url"):
+            consider_url_sequence(tweet.get(key))
+            consider_url_sequence(payload.get(key))
 
         return best_url
+
+    @staticmethod
+    def _is_video_url(url: str) -> bool:
+        lowered = url.lower()
+        if "video.twimg.com" in lowered:
+            return True
+        video_suffixes = (".mp4", ".mov", ".m4v", ".webm", ".mkv", ".m3u8")
+        bare = lowered.split("?", 1)[0]
+        return any(bare.endswith(ext) for ext in video_suffixes)
 
     @staticmethod
     def _normalize_url(url: str) -> str:

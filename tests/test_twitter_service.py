@@ -53,6 +53,27 @@ class TwitterDownloaderTest(unittest.TestCase):
         with self.assertRaises(TwitterDownloadError):
             self.downloader._parse_payload({"tweet": {"text": "no media"}})
 
+    def test_parse_payload_handles_media_extended_video(self) -> None:
+        payload = {
+            "text": "Video tweet",
+            "mediaURLs": ["https://video.twimg.com/sample/vid_default.mp4?tag=12"],
+            "media_extended": [
+                {
+                    "type": "video",
+                    "url": "https://video.twimg.com/sample/vid_360.mp4?tag=12",
+                    "variants": [
+                        {"url": "https://video.twimg.com/sample/vid_1080.mp4?tag=12", "bitrate": 2_000_000},
+                        {"url": "https://video.twimg.com/sample/vid_480.mp4?tag=12", "bitrate": 512_000},
+                    ],
+                }
+            ],
+        }
+
+        asset = self.downloader._parse_payload(payload)
+
+        self.assertEqual(asset.video_url, "https://video.twimg.com/sample/vid_1080.mp4?tag=12")
+        self.assertEqual(asset.photos, [])
+
 
 if __name__ == "__main__":
     unittest.main()
