@@ -6,6 +6,7 @@ import asyncio
 
 from aiohttp import web
 from aiogram import Bot, Dispatcher
+from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
 
@@ -23,7 +24,10 @@ def _build_dispatcher() -> Dispatcher:
 
 
 async def _run_polling() -> None:
-    bot = Bot(token=settings.bot_token, parse_mode=ParseMode.HTML)
+    bot = Bot(
+        token=settings.bot_token,
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+    )
     dp = _build_dispatcher()
 
     await bot.delete_webhook(drop_pending_updates=True)
@@ -31,7 +35,10 @@ async def _run_polling() -> None:
 
 
 async def _run_webhook() -> None:
-    bot = Bot(token=settings.bot_token, parse_mode=ParseMode.HTML)
+    bot = Bot(
+        token=settings.bot_token,
+        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
+    )
     dp = _build_dispatcher()
 
     webhook_path = settings.webhook_path.strip() or "/webhook"
