@@ -1,0 +1,9 @@
+aiogram<4,>=3.13
+aiohttp>=3.10
+httpx[http2]>=0.27
+pydantic-settings>=2.3
+python-dotenv>=1.0
+
+[dev]
+ruff>=0.7
+mypy>=1.11
