@@ -1,27 +1,28 @@
-"""Handlers responsible for TikTok downloads."""
+"""Handlers responsible for Twitter/X downloads."""
 
 from __future__ import annotations
 
 import logging
 import re
+
 from aiogram import Router
 from aiogram.filters import BaseFilter
 from aiogram.types import Message
 
 from ..config import settings
-from ..services.tiktok import TikTokDownloadError, TikTokDownloader, TikTokPhotoAlbum
+from ..services.twitter import TwitterDownloadError, TwitterDownloader
 from ..utils.telegram_media import send_photo_album
 
-router = Router(name="tiktok")
+router = Router(name="twitter")
 logger = logging.getLogger(__name__)
 
-downloader = TikTokDownloader(
-    base_url=str(settings.tikwm_api_url),
+downloader = TwitterDownloader(
+    base_url=str(settings.twitter_api_base_url),
     timeout=settings.http_timeout_seconds,
 )
 
-TIKTOK_URL_RE = re.compile(
-    r"(?P<url>(?:https?://)?(?:[a-z0-9-]+\.)*tiktok\.com/[^\s]+)",
+TWITTER_URL_RE = re.compile(
+    r"(?P<url>(?:https?://)?(?:www\.)?(?:twitter|x)\.com/[^\s]+)",
     re.IGNORECASE,
 )
 
@@ -30,51 +31,55 @@ PHOTO_DOWNLOAD_HEADERS = {
         "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
         "(KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36"
     ),
+    "Referer": "https://x.com/",
 }
 
 
-class TikTokLinkFilter(BaseFilter):
-    """Detect TikTok links in any incoming message."""
+class TwitterLinkFilter(BaseFilter):
+    """Detect Twitter/X links in any incoming message."""
 
     async def __call__(self, message: Message) -> bool | dict[str, str]:
-        url = _extract_tiktok_url(message)
+        url = _extract_twitter_url(message)
         if not url:
             return False
-        return {"tiktok_url": url}
+        return {"tweet_url": url}
 
 
-@router.message(TikTokLinkFilter())
-async def handle_tiktok_link(message: Message, tiktok_url: str) -> None:
-    """Automatically download any TikTok link shared in chat."""
+@router.message(TwitterLinkFilter())
+async def handle_twitter_link(message: Message, tweet_url: str) -> None:
+    """Automatically download any Twitter/X link shared in chat."""
 
-    status = await message.reply("⬇️ TikTok linki işleniyor, lütfen bekleyin…")
+    status = await message.reply("⬇️ Twitter/X linki işleniyor, lütfen bekleyin…")
     try:
-        asset = await downloader.fetch_asset(tiktok_url)
-        if isinstance(asset, TikTokPhotoAlbum):
+        asset = await downloader.fetch_asset(tweet_url)
+        caption_for_photos = asset.caption
+        if asset.video_url:
+            await message.answer_video(video=asset.video_url, caption=asset.caption or None)
+            caption_for_photos = None
+
+        if asset.photos:
             await send_photo_album(
                 message,
                 asset.photos,
-                asset.caption,
+                caption_for_photos,
                 timeout=settings.http_timeout_seconds,
                 headers=PHOTO_DOWNLOAD_HEADERS,
                 logger=logger,
-                error_cls=TikTokDownloadError,
-                filename_prefix="tiktok_photo",
+                error_cls=TwitterDownloadError,
+                filename_prefix="twitter_photo",
             )
-        else:
-            await message.answer_video(video=asset.url, caption=asset.caption)
-    except TikTokDownloadError as exc:
+    except TwitterDownloadError as exc:
         await message.reply(f"⚠️ İndirme başarısız: {exc}")
     except Exception:  # pragma: no cover - geniş hata yakalama
-        logger.exception("TikTok içeriği indirilemedi")
+        logger.exception("Twitter içeriği indirilemedi")
         await message.reply("Beklenmeyen bir hata oluştu, lütfen daha sonra tekrar deneyin.")
     finally:
         await _safe_delete(status)
 
 
-def _extract_tiktok_url(message: Message) -> str | None:
+def _extract_twitter_url(message: Message) -> str | None:
     text = message.text or message.caption or ""
-    match = TIKTOK_URL_RE.search(text)
+    match = TWITTER_URL_RE.search(text)
     if not match:
         return None
     raw_url = match.group("url").strip()
@@ -91,5 +96,3 @@ async def _safe_delete(status_message: Message | None) -> None:
         await status_message.delete()
     except Exception:
         logger.debug("Durum mesajı silinemedi", exc_info=True)
-
-
