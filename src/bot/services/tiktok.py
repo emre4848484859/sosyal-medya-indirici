@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Final
+from typing import Any, Final, Iterator
 
 import httpx
 
@@ -74,7 +74,29 @@ class TikTokDownloader:
         data: dict[str, Any],
         images: list[str] | None = None,
     ) -> TikTokPhotoAlbum:
-        photos = images if images is not None else (data.get("images") or [])
+        photo_sources: list[Any] = [
+            images if images is not None else data.get("images"),
+            data.get("image_list"),
+            data.get("imageList"),
+            data.get("image_urls"),
+            data.get("imageUrls"),
+        ]
+
+        album_info = (
+            data.get("image_post_info")
+            or data.get("imagePostInfo")
+            or data.get("image_post")
+            or data.get("imagePost")
+        )
+        if isinstance(album_info, dict):
+            photo_sources.extend(
+                album_info.get(key)
+                for key in ("images", "image_list", "imageList", "image_urls", "imageUrls")
+            )
+        elif album_info is not None:
+            photo_sources.append(album_info)
+
+        photos = self._collect_photo_urls(*photo_sources)
         if not photos:
             raise TikTokDownloadError("Bu bağlantıda fotoğraf albümü bulunamadı.")
         caption = self._build_caption(data)
@@ -100,3 +122,66 @@ class TikTokDownloader:
         if author_name:
             pieces.append(f"👤 {author_name}")
         return "\n".join(pieces)
+
+    @classmethod
+    def _collect_photo_urls(cls, *sources: Any) -> list[str]:
+        collected: list[str] = []
+        seen: set[str] = set()
+        for source in sources:
+            for url in cls._iter_photo_urls(source):
+                normalized = cls._normalize_photo_url(url)
+                if not normalized or normalized in seen:
+                    continue
+                seen.add(normalized)
+                collected.append(normalized)
+        return collected
+
+    @classmethod
+    def _iter_photo_urls(cls, value: Any) -> Iterator[str]:
+        if not value:
+            return
+        if isinstance(value, str):
+            yield value
+            return
+        if isinstance(value, dict):
+            for key in ("url", "image_url", "imageUrl"):
+                direct = value.get(key)
+                if isinstance(direct, str):
+                    yield direct
+            for key in ("url_list", "urlList", "urls"):
+                nested = value.get(key)
+                if isinstance(nested, (list, tuple, set)):
+                    for item in nested:
+                        yield from cls._iter_photo_urls(item)
+            for key in (
+                "images",
+                "image_list",
+                "imageList",
+                "image_urls",
+                "imageUrls",
+                "display_image",
+                "origin_image",
+                "webp_color_image",
+                "download_addr",
+                "cover",
+                "cover_image",
+                "image",
+                "img",
+            ):
+                yield from cls._iter_photo_urls(value.get(key))
+            return
+        if isinstance(value, (list, tuple, set)):
+            for item in value:
+                yield from cls._iter_photo_urls(item)
+            return
+
+    @staticmethod
+    def _normalize_photo_url(url: str) -> str | None:
+        candidate = url.strip()
+        if not candidate:
+            return None
+        if candidate.startswith("//"):
+            candidate = f"https:{candidate}"
+        if candidate.startswith(("http://", "https://")):
+            return candidate
+        return None
