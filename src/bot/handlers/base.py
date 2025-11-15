@@ -13,12 +13,13 @@ HELP_TEXT = "\n".join(
         "<b>Sosyal Medya İndirici Bot</b>",
         "",
         "Nasıl kullanırım?",
-        " • TikTok ya da X (Twitter) linkini sohbete yapıştır, içerik otomatik iner.",
+        " • TikTok, X (Twitter) ya da Reddit linkini sohbete yapıştır, içerik otomatik iner.",
         " • Aynı mesajda birden fazla link gönderebilirsin; bot hepsini sırayla işler.",
         "",
         "Desteklenen içerikler:",
         " • TikTok videoları, hikâyeleri ve fotoğraf albümleri",
         " • X (Twitter) fotoğrafları, GIF'ler ve videolar",
+        " • Reddit videoları, tekil görselleri ve galerileri",
         "",
         "İpuçları:",
         " • Paylaşımlar herkese açık olmalı, aksi hâlde içerik indirilemez.",
@@ -34,7 +35,7 @@ async def handle_start(message: Message) -> None:
 
     await message.answer(
         "Merhaba! 👋\n\n"
-        "TikTok ve X (Twitter) linklerini bana gönder, videoları ve fotoğrafları senin için indirip paylaşayım.\n"
+          "TikTok, X (Twitter) ve Reddit linklerini bana gönder, videoları ve fotoğrafları senin için indirip paylaşayım.\n"
         "Her şey nasıl çalışıyor merak ediyorsan /help yazman yeterli."
     )
 

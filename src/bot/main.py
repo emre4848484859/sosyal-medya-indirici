@@ -12,6 +12,7 @@ from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_applicati
 
 from .config import settings
 from .handlers.base import router as base_router
+from .handlers.reddit import router as reddit_router
 from .handlers.tiktok import router as tiktok_router
 from .handlers.twitter import router as twitter_router
 from .logging import setup_logging
@@ -20,6 +21,7 @@ from .logging import setup_logging
 def _build_dispatcher() -> Dispatcher:
     dispatcher = Dispatcher()
     dispatcher.include_router(base_router)
+    dispatcher.include_router(reddit_router)
     dispatcher.include_router(tiktok_router)
     dispatcher.include_router(twitter_router)
     return dispatcher

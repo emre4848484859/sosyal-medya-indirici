@@ -1,10 +1,12 @@
 # Sosyal Medya İndirici Botu
 
-Telegram üzerinden TikTok (ve gelecekte diğer platformlar) içeriklerini indirebilen, gruplarda ve özel sohbetlerde kullanılmaya hazır, genişletilebilir bir bot.
+Telegram üzerinden TikTok, X (Twitter) ve Reddit içeriklerini indirebilen, gruplarda ve özel sohbetlerde kullanılmaya hazır, genişletilebilir bir bot.
 
 ## Özellikler
-- Sohbete bırakılan her TikTok linkini otomatik olarak algılama
-- Videoları, story'leri ve fotoğraf albümlerini tek istekle ayırt edip gönderme
+- Sohbete bırakılan TikTok, X (Twitter) ve Reddit linklerini otomatik olarak algılama
+- TikTok videoları, story'leri ve fotoğraf albümlerini tek istekle ayırt edip gönderme
+- VXTwitter API üzerinden X (Twitter) fotoğrafları, GIF'leri ve videolarını indirme
+- Reddit tekil görsellerini, galerilerini ve v.redd.it videolarını dışa aktarma
 - Albümlerde Telegram sınırlarını aşmamak için 10'lu medya grupları ve artan görselleri tekil mesajlarla tamamlama
 - Hem özel sohbetlerde hem de gruplarda güvenli kullanım
 - TikTok dışındaki platformlar için modüler servis mimarisi
@@ -26,7 +28,12 @@ cp .env.example .env
 python -m bot.main
 ```
 
-> Varsayılan olarak TikTok medyaları `https://tikwm.com/api/` servisi üzerinden çekilir. Farklı bir servis kullanmak isterseniz `.env` içindeki `TIKWM_API_URL` değerini güncelleyin.
+> Varsayılan API uçları:
+> - TikTok: `TIKWM_API_URL=https://tikwm.com/api/`
+> - X (Twitter): `TWITTER_API_BASE_URL=https://api.vxtwitter.com`
+> - Reddit: `REDDIT_API_BASE_URL=https://www.reddit.com`
+>
+> İhtiyacınıza göre bu değerleri `.env` dosyasında güncelleyebilirsiniz.
 
 ### Çalıştırma Modları
 - `BOT_MODE=polling`: Lokal geliştirme için idealdir, Telegram API’sine long-polling ile bağlanır.
@@ -44,9 +51,13 @@ src/bot
 ├── main.py          # aiogram Dispatcher ve router kurulumu
 ├── handlers/
 │   ├── base.py      # /start, /help vb.
-│   └── tiktok.py    # TikTok komutları ve iş mantığı
+│   ├── tiktok.py    # TikTok komutları ve iş mantığı
+│   ├── twitter.py   # X (Twitter) linklerini işler
+│   └── reddit.py    # Reddit linklerini işler
 ├── services/
-│   └── tiktok.py    # tikwm tabanlı indirme servisi
+│   ├── tiktok.py    # tikwm tabanlı indirme servisi
+│   ├── twitter.py   # VXTwitter istemcisi
+│   └── reddit.py    # Reddit JSON istemcisi
 └── utils/
     └── chunk.py     # medya gruplarını bölme yardımcıları
 ```
@@ -67,5 +78,5 @@ Yeni bir platform eklemek için `services/` altında yeni bir istemci ve `handle
 ## Yol Haritası
 - Instagram Reels/Stories indirme
 - YouTube kısa & uzun video desteği
-- Reddit ve X (Twitter) içerikleri
+- Snapchat / Facebook içerikleri
 - Kuyruk sistemi (Redis) ile yüksek hacimli istek yönetimi
