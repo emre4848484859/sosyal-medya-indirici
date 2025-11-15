@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import logging
 
+import re
+
 from aiogram import Router
-from aiogram.filters import Command
+from aiogram.filters import BaseFilter
 from aiogram.types import InputMediaPhoto, Message
 
 from ..config import settings
-from ..services.tiktok import TikTokDownloadError, TikTokDownloader
+from ..services.tiktok import TikTokDownloadError, TikTokDownloader, TikTokPhotoAlbum
 from ..utils.chunk import chunked
 
 router = Router(name="tiktok")
@@ -20,89 +22,71 @@ downloader = TikTokDownloader(
     timeout=settings.http_timeout_seconds,
 )
 
+TIKTOK_URL_RE = re.compile(
+    r"(?P<url>(?:https?://)?(?:[a-z0-9-]+\.)*tiktok\.com/[^\s]+)",
+    re.IGNORECASE,
+)
 
-@router.message(Command("tiktok_video"))
-async def handle_tiktok_video(message: Message) -> None:
-    url = _extract_url_argument(message)
-    if not url:
-        await message.reply("Lütfen komuttan sonra bir TikTok linki ekleyin.")
-        return
 
-    status = await message.reply("🎬 Video hazırlanıyor, lütfen bekleyin…")
+class TikTokLinkFilter(BaseFilter):
+    """Detect TikTok links in any incoming message."""
+
+    async def __call__(self, message: Message) -> bool | dict[str, str]:
+        url = _extract_tiktok_url(message)
+        if not url:
+            return False
+        return {"tiktok_url": url}
+
+
+@router.message(TikTokLinkFilter())
+async def handle_tiktok_link(message: Message, tiktok_url: str) -> None:
+    """Automatically download any TikTok link shared in chat."""
+
+    status = await message.reply("⬇️ TikTok linki işleniyor, lütfen bekleyin…")
     try:
-        asset = await downloader.fetch_video(url)
-        await message.answer_video(video=asset.url, caption=asset.caption)
+        asset = await downloader.fetch_asset(tiktok_url)
+        if isinstance(asset, TikTokPhotoAlbum):
+            await _send_album(message, asset.photos, asset.caption)
+        else:
+            await message.answer_video(video=asset.url, caption=asset.caption)
     except TikTokDownloadError as exc:
         await message.reply(f"⚠️ İndirme başarısız: {exc}")
-    except Exception as exc:  # pragma: no cover - geniş hata yakalama
-        logger.exception("TikTok video indirilemedi")
-        await message.reply("Beklenmeyen bir hata oluştu, lütfen daha sonra tekrar deneyin.")
-    finally:
-        await _safe_delete(status)
-
-
-@router.message(Command("tiktok_story"))
-async def handle_tiktok_story(message: Message) -> None:
-    url = _extract_url_argument(message)
-    if not url:
-        await message.reply("Lütfen komuttan sonra bir TikTok linki ekleyin.")
-        return
-
-    status = await message.reply("📽️ Hikâye indiriliyor…")
-    try:
-        asset = await downloader.fetch_story(url)
-        await message.answer_video(video=asset.url, caption=f"TikTok Story\n{asset.caption}")
-    except TikTokDownloadError as exc:
-        await message.reply(f"⚠️ Hikâye indirilemedi: {exc}")
-    except Exception:
-        logger.exception("TikTok story indirilemedi")
-        await message.reply("Beklenmeyen bir hata oluştu, lütfen daha sonra tekrar deneyin.")
-    finally:
-        await _safe_delete(status)
-
-
-@router.message(Command("tiktok_photos"))
-async def handle_tiktok_photos(message: Message) -> None:
-    url = _extract_url_argument(message)
-    if not url:
-        await message.reply("Lütfen komuttan sonra bir TikTok linki ekleyin.")
-        return
-
-    status = await message.reply("🖼️ Fotoğraf albümü indiriliyor…")
-    try:
-        album = await downloader.fetch_photos(url)
-        await _send_album(message, album.photos, album.caption)
-    except TikTokDownloadError as exc:
-        await message.reply(f"⚠️ Fotoğraflar indirilemedi: {exc}")
-    except Exception:
-        logger.exception("TikTok fotoğrafları indirilemedi")
+    except Exception:  # pragma: no cover - geniş hata yakalama
+        logger.exception("TikTok içeriği indirilemedi")
         await message.reply("Beklenmeyen bir hata oluştu, lütfen daha sonra tekrar deneyin.")
     finally:
         await _safe_delete(status)
 
 
 async def _send_album(message: Message, photos: list[str], caption: str) -> None:
-    first_batch = True
+    """Send photo albums respecting Telegram's media group constraints."""
+
+    caption_pending = caption
     for chunk in chunked(photos, 10):
-        media_group = []
-        for idx, photo_url in enumerate(chunk):
-            media_group.append(
+        if len(chunk) == 1:
+            await message.answer_photo(photo=chunk[0], caption=caption_pending)
+        else:
+            media_group = [
                 InputMediaPhoto(
                     media=photo_url,
-                    caption=caption if first_batch and idx == 0 else None,
+                    caption=caption_pending if idx == 0 else None,
                 )
-            )
-        await message.answer_media_group(media_group)
-        first_batch = False
+                for idx, photo_url in enumerate(chunk)
+            ]
+            await message.answer_media_group(media_group)
+        caption_pending = None
 
 
-def _extract_url_argument(message: Message) -> str | None:
+def _extract_tiktok_url(message: Message) -> str | None:
     text = message.text or message.caption or ""
-    parts = text.split(maxsplit=1)
-    if len(parts) < 2:
+    match = TIKTOK_URL_RE.search(text)
+    if not match:
         return None
-    url = parts[1].strip()
-    return url or None
+    raw_url = match.group("url").strip()
+    cleaned = raw_url.rstrip(").,!?")
+    if not cleaned.startswith(("http://", "https://")):
+        cleaned = f"https://{cleaned}"
+    return cleaned
 
 
 async def _safe_delete(status_message: Message | None) -> None:

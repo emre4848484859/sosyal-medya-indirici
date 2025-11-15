@@ -42,13 +42,7 @@ class TikTokDownloader:
 
     async def fetch_video(self, target_url: str) -> TikTokVideo:
         data = await self._request(target_url)
-
-        video_url = data.get("play") or data.get("wmplay")
-        if not video_url:
-            raise TikTokDownloadError("Video akışı bulunamadı.")
-
-        caption = self._build_caption(data)
-        return TikTokVideo(url=video_url, caption=caption, cover_url=data.get("cover"))
+        return self._build_video(data)
 
     async def fetch_story(self, target_url: str) -> TikTokVideo:
         """Stories teknik olarak videodur, ayrı komutla aynı akış kullanılır."""
@@ -57,12 +51,34 @@ class TikTokDownloader:
 
     async def fetch_photos(self, target_url: str) -> TikTokPhotoAlbum:
         data = await self._request(target_url)
-        images = data.get("images") or []
-        if not images:
-            raise TikTokDownloadError("Bu bağlantıda fotoğraf albümü bulunamadı.")
+        return self._build_photo_album(data)
 
+    async def fetch_asset(self, target_url: str) -> TikTokVideo | TikTokPhotoAlbum:
+        """Tek bir uçtan gelen veriye göre uygun içerik tipini belirle."""
+
+        data = await self._request(target_url)
+        images = data.get("images") or []
+        if images:
+            return self._build_photo_album(data, images)
+        return self._build_video(data)
+
+    def _build_video(self, data: dict[str, Any]) -> TikTokVideo:
+        video_url = data.get("play") or data.get("wmplay")
+        if not video_url:
+            raise TikTokDownloadError("Video akışı bulunamadı.")
         caption = self._build_caption(data)
-        return TikTokPhotoAlbum(photos=list(images), caption=caption, cover_url=data.get("cover"))
+        return TikTokVideo(url=video_url, caption=caption, cover_url=data.get("cover"))
+
+    def _build_photo_album(
+        self,
+        data: dict[str, Any],
+        images: list[str] | None = None,
+    ) -> TikTokPhotoAlbum:
+        photos = images if images is not None else (data.get("images") or [])
+        if not photos:
+            raise TikTokDownloadError("Bu bağlantıda fotoğraf albümü bulunamadı.")
+        caption = self._build_caption(data)
+        return TikTokPhotoAlbum(photos=list(photos), caption=caption, cover_url=data.get("cover"))
 
     async def _request(self, target_url: str) -> dict[str, Any]:
         payload = {"url": target_url}

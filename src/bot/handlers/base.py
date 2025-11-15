@@ -13,15 +13,13 @@ HELP_TEXT = (
         [
             "<b>Sosyal Medya İndirici Bot</b>",
             "",
-            "Komutlar:",
-            " • /tiktok_video <link> — videoyu indirir",
-            " • /tiktok_story <link> — hikâyeyi kaydeder",
-            " • /tiktok_photos <link> — fotoğraf/albümleri yollar",
+            "Nasıl kullanılır?",
+            " • Herhangi bir TikTok linkini sohbete gönderin, bot otomatik olarak indirir.",
+            " • Videolar, story'ler ve fotoğraf albümleri tek komutla ayırt edilir.",
             "",
             "İpuçları:",
-            " • Komutları özel sohbetten veya gruplardan kullanabilirsiniz.",
             " • Linkin herkese açık ve erişilebilir olduğundan emin olun.",
-            " • Fotoğraf albümleri Telegram sınırı nedeniyle 10'lu paketlerle gönderilir.",
+            " • Fotoğraf albümleri Telegram kısıtlamaları nedeniyle en fazla 10'lu paketlerle paylaşılır; kalan görseller tekil mesajlarla gönderilir.",
         ]
     )
 )
@@ -33,11 +31,12 @@ async def handle_start(message: Message) -> None:
 
     await message.answer(
         "Merhaba! 👋\n"
-        "TikTok içeriklerini indirmek için /help komutuyla detaylı bilgilere ulaşabilirsin."
+        "TikTok linklerini direkt sohbete gönder, kalanını ben hallederim.\n"
+        "Detaylar için /help yazabilirsin."
     )
 
 
-@router.message(Command("help"))
+@router.message(Command(commands=["help"]))
 async def handle_help(message: Message) -> None:
     """Explain how to control the bot."""
 
