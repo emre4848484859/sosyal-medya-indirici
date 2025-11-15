@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     webhook_path: str = Field("/webhook", alias="WEBHOOK_PATH")
     webhook_secret: str | None = Field(None, alias="WEBHOOK_SECRET")
     port: int = Field(8080, alias="PORT")
+    telethon_api_id: int | None = Field(None, alias="TELETHON_API_ID")
+    telethon_api_hash: str | None = Field(None, alias="TELETHON_API_HASH")
+    telethon_session_string: str | None = Field(None, alias="TELETHON_SESSION_STRING")
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -27,6 +30,9 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore",
     )
+
+    def telethon_enabled(self) -> bool:
+        return bool(self.telethon_api_id and self.telethon_api_hash and self.telethon_session_string)
 
     def webhook_url(self) -> str:
         if not self.webhook_base_url:

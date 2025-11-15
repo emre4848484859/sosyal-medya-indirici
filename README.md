@@ -4,6 +4,7 @@ Telegram üzerinden TikTok ve X (Twitter) içeriklerini indirebilen, gruplarda v
 
 ## Özellikler
 - Sohbete bırakılan TikTok ve X (Twitter) linklerini otomatik olarak algılama
+- Telegram mesaj linklerinden (public veya özel kanal/grup) medya çekme ve kullanıcıya geri gönderme
 - TikTok videoları, story'leri ve fotoğraf albümlerini tek istekle ayırt edip gönderme
 - VXTwitter API üzerinden X (Twitter) fotoğrafları, GIF'leri ve videolarını indirme
 - Albümlerde Telegram sınırlarını aşmamak için 10'lu medya grupları ve artan görselleri tekil mesajlarla tamamlama
@@ -13,6 +14,7 @@ Telegram üzerinden TikTok ve X (Twitter) içeriklerini indirebilen, gruplarda v
 ## Gereksinimler
 - Python 3.11+
 - Telegram bot token ([@BotFather](https://t.me/BotFather) üzerinden alınır)
+- Telegram API kimlik bilgileri (`TELETHON_API_ID`, `TELETHON_API_HASH`, `TELETHON_SESSION_STRING`) – Telegram linklerinden medya çekmek için zorunludur
 
 ## Kurulum
 ```bash
@@ -22,6 +24,8 @@ pip install -e .
 # ortam değişkenlerini hazırla
 cp .env.example .env
 # .env dosyasındaki BOT_TOKEN, BOT_MODE vb. alanları doldurun
+# Telegram link özelliği için TELETHON_API_ID, TELETHON_API_HASH
+# ve TELETHON_SESSION_STRING değerlerini girin
 
 # botu çalıştır
 python -m bot.main
@@ -50,10 +54,12 @@ src/bot
 ├── handlers/
 │   ├── base.py      # /start, /help vb.
 │   ├── tiktok.py    # TikTok komutları ve iş mantığı
-│   └── twitter.py   # X (Twitter) linklerini işler
+│   ├── twitter.py   # X (Twitter) linklerini işler
+│   └── telegram.py  # Telegram linklerinden medya çeker
 ├── services/
-│   ├── tiktok.py    # tikwm tabanlı indirme servisi
-│   └── twitter.py   # VXTwitter istemcisi
+│   ├── tiktok.py            # tikwm tabanlı indirme servisi
+│   ├── twitter.py           # VXTwitter istemcisi
+│   └── telegram_fetcher.py  # Telethon tabanlı Telegram mesaj yardımcıları
 └── utils/
     └── chunk.py     # medya gruplarını bölme yardımcıları
 ```

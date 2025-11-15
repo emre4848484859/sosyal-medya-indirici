@@ -17,7 +17,8 @@ dependencies = [
   "aiohttp>=3.10",
   "httpx[http2]>=0.27",
   "pydantic-settings>=2.3",
-  "python-dotenv>=1.0"
+  "python-dotenv>=1.0",
+  "telethon>=1.37"
 ]
 
 [project.optional-dependencies]
