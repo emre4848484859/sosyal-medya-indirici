@@ -8,20 +8,23 @@ from aiogram.types import Message
 
 router = Router(name="base")
 
-HELP_TEXT = (
-    "\n".join(
-        [
-            "<b>Sosyal Medya İndirici Bot</b>",
-            "",
-            "Nasıl kullanılır?",
-            " • Herhangi bir TikTok linkini sohbete gönderin, bot otomatik olarak indirir.",
-            " • Videolar, story'ler ve fotoğraf albümleri tek komutla ayırt edilir.",
-            "",
-            "İpuçları:",
-            " • Linkin herkese açık ve erişilebilir olduğundan emin olun.",
-            " • Fotoğraf albümleri Telegram kısıtlamaları nedeniyle en fazla 10'lu paketlerle paylaşılır; kalan görseller tekil mesajlarla gönderilir.",
-        ]
-    )
+HELP_TEXT = "\n".join(
+    [
+        "<b>Sosyal Medya İndirici Bot</b>",
+        "",
+        "Nasıl kullanırım?",
+        " • TikTok ya da X (Twitter) linkini sohbete yapıştır, içerik otomatik iner.",
+        " • Aynı mesajda birden fazla link gönderebilirsin; bot hepsini sırayla işler.",
+        "",
+        "Desteklenen içerikler:",
+        " • TikTok videoları, hikâyeleri ve fotoğraf albümleri",
+        " • X (Twitter) fotoğrafları, GIF'ler ve videolar",
+        "",
+        "İpuçları:",
+        " • Paylaşımlar herkese açık olmalı, aksi hâlde içerik indirilemez.",
+        " • Fotoğraf albümleri Telegram sınırı nedeniyle 10'lu paketler hâlinde gelir; kalan görseller tek tek gönderilir.",
+        " • Videoları ya da fotoğrafları tekrar paylaşmak istersen mesajı yönlendirmen yeterli.",
+    ]
 )
 
 
@@ -30,9 +33,9 @@ async def handle_start(message: Message) -> None:
     """Greet the user and point them to /help."""
 
     await message.answer(
-        "Merhaba! 👋\n"
-        "TikTok linklerini direkt sohbete gönder, kalanını ben hallederim.\n"
-        "Detaylar için /help yazabilirsin."
+        "Merhaba! 👋\n\n"
+        "TikTok ve X (Twitter) linklerini bana gönder, videoları ve fotoğrafları senin için indirip paylaşayım.\n"
+        "Her şey nasıl çalışıyor merak ediyorsan /help yazman yeterli."
     )
 
 
