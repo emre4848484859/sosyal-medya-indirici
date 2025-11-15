@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     bot_token: str = Field(..., alias="BOT_TOKEN")
     tikwm_api_url: HttpUrl = Field("https://tikwm.com/api/", alias="TIKWM_API_URL")
     twitter_api_base_url: HttpUrl = Field("https://api.vxtwitter.com", alias="TWITTER_API_BASE_URL")
+    reddit_api_base_url: HttpUrl = Field("https://www.reddit.com", alias="REDDIT_API_BASE_URL")
     http_timeout_seconds: float = Field(30, alias="HTTP_TIMEOUT_SECONDS")
     bot_mode: Literal["polling", "webhook"] = Field("polling", alias="BOT_MODE")
     webhook_base_url: HttpUrl | None = Field(None, alias="WEBHOOK_BASE_URL")
