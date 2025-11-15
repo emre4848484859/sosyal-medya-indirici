@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import logging
-
+import mimetypes
 import re
+from pathlib import Path
+from urllib.parse import urlparse
 
+import httpx
 from aiogram import Router
 from aiogram.filters import BaseFilter
-from aiogram.types import InputMediaPhoto, Message
+from aiogram.types import BufferedInputFile, InputMediaPhoto, Message
 
 from ..config import settings
 from ..services.tiktok import TikTokDownloadError, TikTokDownloader, TikTokPhotoAlbum
@@ -26,6 +29,13 @@ TIKTOK_URL_RE = re.compile(
     r"(?P<url>(?:https?://)?(?:[a-z0-9-]+\.)*tiktok\.com/[^\s]+)",
     re.IGNORECASE,
 )
+
+PHOTO_DOWNLOAD_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/129.0.0.0 Safari/537.36"
+    ),
+}
 
 
 class TikTokLinkFilter(BaseFilter):
@@ -62,19 +72,30 @@ async def _send_album(message: Message, photos: list[str], caption: str) -> None
     """Send photo albums respecting Telegram's media group constraints."""
 
     caption_pending = caption
-    for chunk in chunked(photos, 10):
-        if len(chunk) == 1:
-            await message.answer_photo(photo=chunk[0], caption=caption_pending)
-        else:
-            media_group = [
-                InputMediaPhoto(
-                    media=photo_url,
-                    caption=caption_pending if idx == 0 else None,
-                )
-                for idx, photo_url in enumerate(chunk)
-            ]
-            await message.answer_media_group(media_group)
-        caption_pending = None
+    index = 1
+    async with httpx.AsyncClient(
+        timeout=settings.http_timeout_seconds,
+        headers=PHOTO_DOWNLOAD_HEADERS,
+        follow_redirects=True,
+    ) as client:
+        for chunk in chunked(photos, 10):
+            downloaded: list[BufferedInputFile] = []
+            for photo in chunk:
+                downloaded.append(await _download_photo(photo, client, index))
+                index += 1
+
+            if len(downloaded) == 1:
+                await message.answer_photo(photo=downloaded[0], caption=caption_pending)
+            else:
+                media_group = [
+                    InputMediaPhoto(
+                        media=photo_file,
+                        caption=caption_pending if idx == 0 else None,
+                    )
+                    for idx, photo_file in enumerate(downloaded)
+                ]
+                await message.answer_media_group(media_group)
+            caption_pending = None
 
 
 def _extract_tiktok_url(message: Message) -> str | None:
@@ -96,3 +117,35 @@ async def _safe_delete(status_message: Message | None) -> None:
         await status_message.delete()
     except Exception:
         logger.debug("Durum mesajı silinemedi", exc_info=True)
+
+
+async def _download_photo(
+    photo_url: str,
+    client: httpx.AsyncClient,
+    sequence: int,
+) -> BufferedInputFile:
+    try:
+        response = await client.get(photo_url)
+        response.raise_for_status()
+    except httpx.HTTPError as exc:
+        logger.warning("Fotoğraf indirilemedi: %s", photo_url, exc_info=exc)
+        raise TikTokDownloadError("TikTok fotoğrafı indirilemedi.") from exc
+
+    filename = _build_photo_filename(photo_url, response.headers.get("Content-Type"), sequence)
+    return BufferedInputFile(response.content, filename=filename)
+
+
+def _build_photo_filename(photo_url: str, content_type: str | None, sequence: int) -> str:
+    parsed = urlparse(photo_url)
+    path = Path(parsed.path or "")
+    suffix = path.suffix if len(path.suffix) <= 5 else ""
+
+    if not suffix and content_type:
+        guessed = mimetypes.guess_extension(content_type.split(";", 1)[0].strip()) or ""
+        suffix = ".jpg" if guessed == ".jpe" else guessed
+
+    if not suffix:
+        suffix = ".jpg"
+
+    stem = path.stem or f"tiktok_photo_{sequence:02d}"
+    return f"{stem}{suffix}"
