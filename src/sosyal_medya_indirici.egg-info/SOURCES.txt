@@ -6,11 +6,9 @@ src/bot/logging.py
 src/bot/main.py
 src/bot/handlers/__init__.py
 src/bot/handlers/base.py
-src/bot/handlers/reddit.py
 src/bot/handlers/tiktok.py
 src/bot/handlers/twitter.py
 src/bot/services/__init__.py
-src/bot/services/reddit.py
 src/bot/services/tiktok.py
 src/bot/services/twitter.py
 src/bot/utils/__init__.py
@@ -21,6 +19,5 @@ src/sosyal_medya_indirici.egg-info/SOURCES.txt
 src/sosyal_medya_indirici.egg-info/dependency_links.txt
 src/sosyal_medya_indirici.egg-info/requires.txt
 src/sosyal_medya_indirici.egg-info/top_level.txt
-tests/test_reddit_service.py
 tests/test_tiktok_service.py
 tests/test_twitter_service.py
