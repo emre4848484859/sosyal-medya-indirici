@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sosyal-medya-indirici"
+version = "0.1.0"
+description = "Çoklu platform desteğine hazır Telegram içerik indirme botu"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+  {name = "Cursor Bot"}
+]
+license = {text = "MIT"}
+dependencies = [
+  "aiogram>=3.13,<4",
+  "httpx[http2]>=0.27",
+  "pydantic-settings>=2.3",
+  "python-dotenv>=1.0"
+]
+
+[project.optional-dependencies]
+dev = [
+  "ruff>=0.7",
+  "mypy>=1.11"
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
