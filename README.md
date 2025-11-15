@@ -1,12 +1,11 @@
 # Sosyal Medya İndirici Botu
 
-Telegram üzerinden TikTok, X (Twitter) ve Reddit içeriklerini indirebilen, gruplarda ve özel sohbetlerde kullanılmaya hazır, genişletilebilir bir bot.
+Telegram üzerinden TikTok ve X (Twitter) içeriklerini indirebilen, gruplarda ve özel sohbetlerde kullanılmaya hazır, genişletilebilir bir bot.
 
 ## Özellikler
-- Sohbete bırakılan TikTok, X (Twitter) ve Reddit linklerini otomatik olarak algılama
+- Sohbete bırakılan TikTok ve X (Twitter) linklerini otomatik olarak algılama
 - TikTok videoları, story'leri ve fotoğraf albümlerini tek istekle ayırt edip gönderme
 - VXTwitter API üzerinden X (Twitter) fotoğrafları, GIF'leri ve videolarını indirme
-- Reddit tekil görsellerini, galerilerini ve v.redd.it videolarını dışa aktarma
 - Albümlerde Telegram sınırlarını aşmamak için 10'lu medya grupları ve artan görselleri tekil mesajlarla tamamlama
 - Hem özel sohbetlerde hem de gruplarda güvenli kullanım
 - TikTok dışındaki platformlar için modüler servis mimarisi
@@ -31,7 +30,6 @@ python -m bot.main
 > Varsayılan API uçları:
 > - TikTok: `TIKWM_API_URL=https://tikwm.com/api/`
 > - X (Twitter): `TWITTER_API_BASE_URL=https://api.vxtwitter.com`
-> - Reddit: `REDDIT_API_BASE_URL=https://www.reddit.com`
 >
 > İhtiyacınıza göre bu değerleri `.env` dosyasında güncelleyebilirsiniz.
 
@@ -52,12 +50,10 @@ src/bot
 ├── handlers/
 │   ├── base.py      # /start, /help vb.
 │   ├── tiktok.py    # TikTok komutları ve iş mantığı
-│   ├── twitter.py   # X (Twitter) linklerini işler
-│   └── reddit.py    # Reddit linklerini işler
+│   └── twitter.py   # X (Twitter) linklerini işler
 ├── services/
 │   ├── tiktok.py    # tikwm tabanlı indirme servisi
-│   ├── twitter.py   # VXTwitter istemcisi
-│   └── reddit.py    # Reddit JSON istemcisi
+│   └── twitter.py   # VXTwitter istemcisi
 └── utils/
     └── chunk.py     # medya gruplarını bölme yardımcıları
 ```
@@ -70,8 +66,8 @@ Yeni bir platform eklemek için `services/` altında yeni bir istemci ve `handle
    - `BOT_TOKEN`: BotFather’dan aldığınız token.
    - `BOT_MODE=webhook`
    - `WEBHOOK_BASE_URL=https://<projeniz>.up.railway.app`
-   - `WEBHOOK_PATH=/webhook/<rastgele>` (Telegram token’ınızı ifşa etmeyen bir yol seçin)
-   - `WEBHOOK_SECRET` (opsiyonel fakat güvenlik için önerilir)
+    - `WEBHOOK_PATH=/webhook/<rastgele>` (Telegram token’ınızı ifşa etmeyen bir yol seçin)
+    - `WEBHOOK_SECRET` (opsiyonel fakat güvenlik için önerilir)
 3. Railway `PORT` değişkenini otomatik sağlar; bot sunucusu `0.0.0.0:PORT` üzerinde webhook dinleyicisini ayağa kaldırır.
 4. Deploy tamamlandığında Telegram tarafında webhook kendiliğinden ayarlanır; botunuz hazır olur.
 
