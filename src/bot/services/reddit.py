@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import asyncio
+import time
 from typing import Any, Final
 from urllib.parse import urlparse
 
@@ -32,26 +34,39 @@ class RedditDownloader:
         ),
         "Accept": "application/json",
     }
+    _TOKEN_SAFETY_WINDOW: Final[int] = 30
 
-    def __init__(self, *, base_url: str, timeout: float = 30) -> None:
+    def __init__(
+        self,
+        *,
+        base_url: str,
+        timeout: float = 30,
+        token_url: str = "https://www.reddit.com/api/v1/access_token",
+        client_id: str | None = None,
+        client_secret: str | None = None,
+        username: str | None = None,
+        password: str | None = None,
+    ) -> None:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
+        self.token_url = token_url
+        self.client_id = client_id
+        self.client_secret = client_secret
+        self.username = username
+        self.password = password
+        self._access_token: str | None = None
+        self._token_expiry: float = 0
+        self._token_lock = asyncio.Lock()
 
     async def fetch_asset(self, post_url: str) -> RedditMediaAsset:
         """Resolve the post URL and download all related media."""
 
+        if not self._credentials_ready():
+            raise RedditDownloadError("Reddit API kimlik bilgileri eksik.")
+
         api_url = self._build_api_url(post_url)
         params = {"raw_json": 1}
-        async with httpx.AsyncClient(
-            timeout=self.timeout,
-            headers=self._DEFAULT_HEADERS,
-            follow_redirects=True,
-        ) as client:
-            try:
-                response = await client.get(api_url, params=params)
-                response.raise_for_status()
-            except httpx.HTTPError as exc:
-                raise RedditDownloadError("Reddit verilerine ulaşılamadı.") from exc
+        response = await self._request_with_token(api_url, params)
 
         try:
             payload = response.json()
@@ -133,6 +148,99 @@ class RedditDownloader:
 
         caption = self._build_caption(post)
         return RedditMediaAsset(caption=caption, photos=photos, video_url=video_url)
+
+    def _credentials_ready(self) -> bool:
+        return all(
+            (
+                self.client_id,
+                self.client_secret,
+                self.username,
+                self.password,
+                self.token_url,
+            )
+        )
+
+    async def _request_with_token(self, url: str, params: dict[str, Any]) -> httpx.Response:
+        async with httpx.AsyncClient(timeout=self.timeout, follow_redirects=True) as client:
+            try:
+                response = await self._authorized_get(client, url, params=params)
+                if response.status_code == 401:
+                    await self._invalidate_token()
+                    response = await self._authorized_get(client, url, params=params, force_refresh=True)
+            except httpx.HTTPError as exc:
+                raise RedditDownloadError("Reddit verilerine ulaşılamadı.") from exc
+
+        response.raise_for_status()
+        return response
+
+    async def _authorized_get(
+        self,
+        client: httpx.AsyncClient,
+        url: str,
+        *,
+        params: dict[str, Any],
+        force_refresh: bool = False,
+    ) -> httpx.Response:
+        token = await self._get_access_token(force_refresh=force_refresh)
+        headers = {
+            **self._DEFAULT_HEADERS,
+            "Authorization": f"Bearer {token}",
+        }
+        return await client.get(url, params=params, headers=headers)
+
+    async def _get_access_token(self, *, force_refresh: bool = False) -> str:
+        if not self._credentials_ready():
+            raise RedditDownloadError("Reddit API kimlik bilgileri eksik.")
+
+        if not force_refresh and self._access_token and time.time() < self._token_expiry:
+            return self._access_token
+
+        async with self._token_lock:
+            if not force_refresh and self._access_token and time.time() < self._token_expiry:
+                return self._access_token
+
+            token, expires_in = await self._fetch_new_token()
+            safety_window = self._TOKEN_SAFETY_WINDOW
+            self._access_token = token
+            self._token_expiry = time.time() + max(int(expires_in) - safety_window, 0)
+            return self._access_token
+
+    async def _fetch_new_token(self) -> tuple[str, int]:
+        data = {
+            "grant_type": "password",
+            "username": self.username or "",
+            "password": self.password or "",
+        }
+        headers = {
+            "User-Agent": self._DEFAULT_HEADERS["User-Agent"],
+        }
+        auth = (self.client_id or "", self.client_secret or "")
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout, headers=headers) as client:
+                response = await client.post(self.token_url, data=data, auth=auth)
+                response.raise_for_status()
+        except httpx.HTTPError as exc:
+            raise RedditDownloadError("Reddit API tokenı alınamadı.") from exc
+
+        try:
+            payload = response.json()
+        except ValueError as exc:
+            raise RedditDownloadError("Geçersiz Reddit token yanıtı alındı.") from exc
+
+        token = payload.get("access_token")
+        expires_in = payload.get("expires_in", 3600)
+        if not isinstance(token, str) or not token:
+            raise RedditDownloadError("Reddit API tokenı alınamadı.")
+        try:
+            expires_int = int(expires_in)
+        except (TypeError, ValueError):
+            expires_int = 3600
+        return token, expires_int
+
+    async def _invalidate_token(self) -> None:
+        async with self._token_lock:
+            self._access_token = None
+            self._token_expiry = 0
 
     def _extract_photos(self, post: dict[str, Any]) -> list[str]:
         photos = self._extract_gallery_photos(post)

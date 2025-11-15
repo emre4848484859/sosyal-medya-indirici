@@ -31,9 +31,24 @@ python -m bot.main
 > Varsayılan API uçları:
 > - TikTok: `TIKWM_API_URL=https://tikwm.com/api/`
 > - X (Twitter): `TWITTER_API_BASE_URL=https://api.vxtwitter.com`
-> - Reddit: `REDDIT_API_BASE_URL=https://www.reddit.com`
+> - Reddit: `REDDIT_API_BASE_URL=https://oauth.reddit.com`
 >
 > İhtiyacınıza göre bu değerleri `.env` dosyasında güncelleyebilirsiniz.
+
+### Reddit API Kimlik Bilgileri
+Reddit anonim JSON uçlarını kapattığı için botun Reddit indiricisi artık OAuth token’ı kullanıyor. Bir “script” tipi Reddit uygulaması oluşturup bu bot için kullanacağınız hesapla ilişkilendirmeniz gerekir:
+
+1. https://www.reddit.com/prefs/apps adresinden yeni uygulama açın (`script` seçin).
+2. `client_id` ve `client_secret` değerlerini kopyalayın.
+3. Botun kullanacağı Reddit hesabının kullanıcı adı ile parolasını belirleyin (mümkünse ikincil bir hesap kullanın).
+4. `.env` dosyanıza şu değişkenleri ekleyin:
+   - `REDDIT_CLIENT_ID=<client_id>`
+   - `REDDIT_CLIENT_SECRET=<client_secret>`
+   - `REDDIT_USERNAME=<reddit_kullanıcı_adı>`
+   - `REDDIT_PASSWORD=<reddit_parolası>`
+   - Opsiyonel: `REDDIT_TOKEN_URL=https://www.reddit.com/api/v1/access_token`
+
+Bu bilgiler olmadan Reddit linkleri için indirme işlemi başlayamaz.
 
 ### Çalıştırma Modları
 - `BOT_MODE=polling`: Lokal geliştirme için idealdir, Telegram API’sine long-polling ile bağlanır.
@@ -72,6 +87,11 @@ Yeni bir platform eklemek için `services/` altında yeni bir istemci ve `handle
    - `WEBHOOK_BASE_URL=https://<projeniz>.up.railway.app`
    - `WEBHOOK_PATH=/webhook/<rastgele>` (Telegram token’ınızı ifşa etmeyen bir yol seçin)
    - `WEBHOOK_SECRET` (opsiyonel fakat güvenlik için önerilir)
+   - Reddit OAuth için:
+     - `REDDIT_CLIENT_ID`
+     - `REDDIT_CLIENT_SECRET`
+     - `REDDIT_USERNAME`
+     - `REDDIT_PASSWORD`
 3. Railway `PORT` değişkenini otomatik sağlar; bot sunucusu `0.0.0.0:PORT` üzerinde webhook dinleyicisini ayağa kaldırır.
 4. Deploy tamamlandığında Telegram tarafında webhook kendiliğinden ayarlanır; botunuz hazır olur.
 

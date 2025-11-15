@@ -19,6 +19,11 @@ logger = logging.getLogger(__name__)
 downloader = RedditDownloader(
     base_url=str(settings.reddit_api_base_url),
     timeout=settings.http_timeout_seconds,
+    token_url=str(settings.reddit_token_url),
+    client_id=settings.reddit_client_id,
+    client_secret=settings.reddit_client_secret,
+    username=settings.reddit_username,
+    password=settings.reddit_password,
 )
 
 REDDIT_URL_RE = re.compile(
