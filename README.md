@@ -3,9 +3,9 @@
 Telegram üzerinden TikTok (ve gelecekte diğer platformlar) içeriklerini indirebilen, gruplarda ve özel sohbetlerde kullanılmaya hazır, genişletilebilir bir bot.
 
 ## Özellikler
-- `/tiktok_video <link>` ile filigransız video indirme ve gönderme
-- `/tiktok_story <link>` ile hikâye/vaka indirme
-- `/tiktok_photos <link>` ile fotoğraf/albüm gönderimi (10'lu gruplar halinde)
+- Sohbete bırakılan her TikTok linkini otomatik olarak algılama
+- Videoları, story'leri ve fotoğraf albümlerini tek istekle ayırt edip gönderme
+- Albümlerde Telegram sınırlarını aşmamak için 10'lu medya grupları ve artan görselleri tekil mesajlarla tamamlama
 - Hem özel sohbetlerde hem de gruplarda güvenli kullanım
 - TikTok dışındaki platformlar için modüler servis mimarisi
 
@@ -34,10 +34,7 @@ python -m bot.main
 
 ## Komutlar
 - `/start` – Botu başlatır, kısa bilgilendirme yapar.
-- `/help` – Komutlar ve ipuçlarını gösterir.
-- `/tiktok_video <link>` – Videoyu indirir ve yollar.
-- `/tiktok_story <link>` – Hikâyeyi indirir (video olarak gönderilir).
-- `/tiktok_photos <link>` – Fotoğraf/albümü Telegram sınırları nedeniyle otomatik olarak 10 adetlik paketlere ayırarak gönderir.
+- `/help` – Nasıl kullanacağınızı ve ipuçlarını gösterir.
 
 ## Mimari
 ```
