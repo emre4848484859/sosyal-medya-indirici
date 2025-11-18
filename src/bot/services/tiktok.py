@@ -104,10 +104,25 @@ class TikTokDownloader:
 
     async def _request(self, target_url: str) -> dict[str, Any]:
         payload = {"url": target_url}
-        async with httpx.AsyncClient(timeout=self._timeout, headers=self._DEFAULT_HEADERS) as client:
-            response = await client.post(self._base_url, data=payload)
-
-        response.raise_for_status()
+        try:
+            async with httpx.AsyncClient(
+                timeout=self._timeout,
+                headers=self._DEFAULT_HEADERS,
+            ) as client:
+                response = await client.post(self._base_url, data=payload)
+                response.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            status = exc.response.status_code if exc.response is not None else None
+            if status is not None and 500 <= status < 600:
+                message = (
+                    "TikTok servisinde geçici bir sorun oluştu. Lütfen birkaç dakika sonra tekrar deneyin."
+                )
+            else:
+                message = "TikTok isteği reddedildi. Lütfen bağlantıyı kontrol edin."
+            suffix = f" (HTTP {status})" if status is not None else ""
+            raise TikTokDownloadError(f"{message}{suffix}") from exc
+        except httpx.RequestError as exc:
+            raise TikTokDownloadError("TikTok servisine bağlanırken ağ hatası oluştu.") from exc
         body = response.json()
         if body.get("code") != 0 or not body.get("data"):
             raise TikTokDownloadError(body.get("msg") or "İçerik indirilemedi.")
