@@ -15,10 +15,7 @@ from ..utils.telegram_media import send_photo_album
 router = Router(name="tiktok")
 logger = logging.getLogger(__name__)
 
-downloader = TikTokDownloader(
-    base_url=str(settings.tikwm_api_url),
-    timeout=settings.http_timeout_seconds,
-)
+downloader = TikTokDownloader(timeout=settings.http_timeout_seconds)
 
 TIKTOK_URL_RE = re.compile(
     r"(?P<url>(?:https?://)?(?:[a-z0-9-]+\.)*tiktok\.com/[^\s]+)",

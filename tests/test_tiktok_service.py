@@ -1,89 +1,66 @@
 import unittest
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
-import httpx
+from yt_dlp.utils import DownloadError
 
 from bot.services.tiktok import TikTokDownloadError, TikTokDownloader
 
 
 class TikTokDownloaderPhotoAlbumTest(unittest.TestCase):
     def setUp(self) -> None:
-        self.downloader = TikTokDownloader(base_url="https://example.com/api/")
+        self.downloader = TikTokDownloader()
 
-    def test_build_photo_album_preserves_all_primary_images(self) -> None:
-        photos = [f"https://cdn.example.com/img_{idx}.jpg" for idx in range(12)]
-        data = {
-            "title": "Sample album",
-            "images": photos,
-        }
-
-        album = self.downloader._build_photo_album(data, photos)
-
-        self.assertEqual(album.photos, photos)
-
-    def test_build_photo_album_merges_nested_album_images(self) -> None:
-        primary = [f"https://cdn.example.com/primary_{idx}.jpg" for idx in range(10)]
+    def test_extract_photo_sources_merges_nested_album_images(self) -> None:
+        primary = [
+            {"imageURL": {"urlList": [f"https://cdn.example.com/primary_{idx}.jpg"]}}
+            for idx in range(3)
+        ]
         nested_images = [
             {
                 "image_url": f"https://cdn.example.com/extra_{idx}.jpg",
-                "display_image": {
-                    "url_list": [f"//cdn.example.com/extra_{idx}.jpg"],
-                },
+                "display_image": {"url_list": [f"//cdn.example.com/mirror_extra_{idx}.jpg"]},
             }
-            for idx in range(14)
+            for idx in range(2)
         ]
-        data = {
-            "title": "Nested album",
-            "images": primary,
+        detail = {
+            "desc": "Nested album",
+            "imagePost": {"images": primary},
             "image_post_info": {"images": nested_images},
         }
 
-        album = self.downloader._build_photo_album(data, primary)
+        photos = self.downloader._extract_photo_sources(detail)
 
-        self.assertEqual(len(album.photos), 24)
-        self.assertEqual(album.photos[:10], primary)
-        self.assertEqual(
-            album.photos[10:],
-            [f"https://cdn.example.com/extra_{idx}.jpg" for idx in range(14)],
-        )
+        expected = [
+            "https://cdn.example.com/primary_0.jpg",
+            "https://cdn.example.com/primary_1.jpg",
+            "https://cdn.example.com/primary_2.jpg",
+            "https://cdn.example.com/extra_0.jpg",
+            "https://cdn.example.com/mirror_extra_0.jpg",
+            "https://cdn.example.com/extra_1.jpg",
+            "https://cdn.example.com/mirror_extra_1.jpg",
+        ]
+        self.assertEqual(photos, expected)
 
     def test_build_photo_album_without_photos_raises(self) -> None:
         with self.assertRaises(TikTokDownloadError):
-            self.downloader._build_photo_album({"title": "Empty"}, images=[])
+            self.downloader._build_photo_album({"desc": "Empty"}, images=[])
 
 
-class TikTokDownloaderRequestHandlingTest(unittest.IsolatedAsyncioTestCase):
+class TikTokDownloaderErrorHandlingTest(unittest.IsolatedAsyncioTestCase):
     def setUp(self) -> None:
-        self.downloader = TikTokDownloader(base_url="https://example.com/api/")
+        self.downloader = TikTokDownloader(timeout=0.1)
         self.sample_url = "https://www.tiktok.com/@user/video/123"
 
-    async def test_request_converts_server_errors(self) -> None:
-        async_client = AsyncMock()
-        async_client.__aenter__.return_value = async_client
-
-        request = httpx.Request("POST", "https://example.com/api/")
-        response = httpx.Response(status_code=500, request=request)
-        async_client.post.return_value = response
-
-        with patch("bot.services.tiktok.httpx.AsyncClient", return_value=async_client):
+    async def test_extract_info_converts_download_error(self) -> None:
+        with patch.object(
+            self.downloader,
+            "_extract_sync",
+            side_effect=DownloadError("timed out"),
+        ):
             with self.assertRaises(TikTokDownloadError) as ctx:
-                await self.downloader._request(self.sample_url)
+                await self.downloader._extract_info(self.sample_url)
 
-        self.assertIn("geçici bir sorun", str(ctx.exception))
-        self.assertIn("HTTP 500", str(ctx.exception))
-
-    async def test_request_converts_network_errors(self) -> None:
-        async_client = AsyncMock()
-        async_client.__aenter__.return_value = async_client
-
-        request = httpx.Request("POST", "https://example.com/api/")
-        async_client.post.side_effect = httpx.ReadTimeout("timeout", request=request)
-
-        with patch("bot.services.tiktok.httpx.AsyncClient", return_value=async_client):
-            with self.assertRaises(TikTokDownloadError) as ctx:
-                await self.downloader._request(self.sample_url)
-
-        self.assertIn("ağ hatası", str(ctx.exception))
+        self.assertIn("zaman aşımı", str(ctx.exception))
 
 
 if __name__ == "__main__":

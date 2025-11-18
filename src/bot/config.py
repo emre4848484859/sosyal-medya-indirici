@@ -12,7 +12,6 @@ class Settings(BaseSettings):
     """Load configuration from environment variables or `.env`."""
 
     bot_token: str = Field(..., alias="BOT_TOKEN")
-    tikwm_api_url: HttpUrl = Field("https://tikwm.com/api/", alias="TIKWM_API_URL")
     twitter_api_base_url: HttpUrl = Field("https://api.vxtwitter.com", alias="TWITTER_API_BASE_URL")
     http_timeout_seconds: float = Field(30, alias="HTTP_TIMEOUT_SECONDS")
     bot_mode: Literal["polling", "webhook"] = Field("polling", alias="BOT_MODE")

@@ -6,6 +6,7 @@ TikTok ve X (Twitter) linklerini anında yakalayıp Telegram sohbetlerinde indir
 - Sohbete bırakılan TikTok ya da X linklerini otomatik tanıma
 - Telegram mesaj linklerinden (public/özel) medya alma ve kullanıcıya geri gönderme
 - TikTok video, story ve albüm içeriklerini tek adımda ayırt etme
+- TikTok çözümleri `yt-dlp` tabanlıdır; ek üçüncü parti API anahtarı gerekmez
 - VXTwitter API ile fotoğraf, GIF ve videoları indirme
 - Büyük albümlerde Telegram limitlerini aşmadan akıllı parçalara bölme
 - Servis bazlı mimari sayesinde yeni platformları dakikalar içinde ekleyebilme
@@ -30,7 +31,6 @@ python -m bot.main
 | `BOT_TOKEN` | BotFather’dan alınan token |
 | `BOT_MODE` | `polling` (lokal) veya `webhook` (production) |
 | `WEBHOOK_BASE_URL`, `WEBHOOK_SECRET` | Webhook modunu seçtiğinizde zorunlu/isteğe bağlı alanlar |
-| `TIKWM_API_URL` | Varsayılan: `https://tikwm.com/api/` |
 | `TWITTER_API_BASE_URL` | Varsayılan: `https://api.vxtwitter.com` |
 
 > İhtiyaç halinde tüm değerleri `.env` dosyasında güncelleyebilirsiniz.
